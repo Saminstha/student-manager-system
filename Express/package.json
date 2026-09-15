@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
     "devrun": "tsx watch ./src/server.ts",
     "start": "tsx ./src/server.ts",
     "seed:roles": "tsx ./scripts/seedRoles.ts",
