@@ -1,109 +1,42 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import CardGrid from "./components/CardGrid";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./routes/Layout";
 import LoginPage from "./routes/LoginPage";
+import SignupPage from "./routes/SignupPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
-import useMockAuth from "./hooks/useMockAuth";
-import useStudents from "./hooks/useStudents";
-import AddStudentPage from "./routes/AddStudentPage";
-import StudentProfilePage from "./routes/StudentProfilePage";
-import EditStudentPage from "./routes/EditStudentPage";
+import StudentsPage from "./routes/StudentsPage";
+import TeachersPage from "./routes/TeachersPage";
+import CoursesPage from "./routes/CoursesPage";
+import UsersPage from "./routes/UsersPage";
 import NotFoundPage from "./routes/NotFoundPage";
-import { useAppSelector } from "./store/hooks";
-import "./App.css";
+import AuthInit from "./components/AuthInit";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
-  const { isAuthenticated, login, logout } = useMockAuth();
-
-  const {
-    addStudent,
-    deleteStudent,
-    updateStudent,
-  } = useStudents();
-
-  const { students, loading, error } = useAppSelector(
-    (state) => state.students
-  );
-
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route 
-          element={
-            <Layout
-              isAuthenticated={isAuthenticated}
-              onLogout={logout}
-            />
-          }
-        >
-          {/* Home */}
-          <Route
-            index
-            element={
-              <CardGrid
-                students={students}
-                loading={loading}
-                error={error}
-                deleteStudent={deleteStudent}
-                isAuthenticated={isAuthenticated}
-              />
-            }
-          />
+    <AuthInit>
+      <BrowserRouter>
+        <Routes>
+          {/* Public */}
+          <Route path="login" element={<LoginPage />} />
+          <Route path="signup" element={<SignupPage />} />
 
-          {/* Login */}
-          <Route
-            path="login"
-            element={<LoginPage onLogin={login} />}
-          />
-
-          {/* Student Profile (Everyone can view) */}
-          <Route
-            path="students/:id"
-            element={
-              <StudentProfilePage
-                students={students}
-                isAuthenticated={isAuthenticated}
-                deleteStudent={deleteStudent}
-              />
-            }
-          />
-
-          {/* Protected Routes */}
-          <Route
-            element={
-              <ProtectedRoute
-                isAuthenticated={isAuthenticated}
-              />
-            }
-          >
-            <Route
-              path="students/new"
-              element={
-                <AddStudentPage
-                  addStudent={addStudent}
-                />
-              }
-            />
-
-            <Route
-              path="students/:id/edit"
-              element={
-                <EditStudentPage
-                  students={students}
-                  updateStudent={updateStudent}
-                />
-              }
-            />
+          {/* Protected app (sidebar + students/teachers/courses) */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route index element={<Navigate to="/students" replace />} />
+              <Route path="students" element={<StudentsPage />} />
+              <Route path="teachers" element={<TeachersPage />} />
+              <Route path="courses" element={<CoursesPage />} />
+              <Route path="users" element={<UsersPage />} />
+            </Route>
           </Route>
 
           {/* 404 */}
-          <Route
-            path="*"
-            element={<NotFoundPage />}
-          />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+        <Toaster />
+      </BrowserRouter>
+    </AuthInit>
   );
 }
 

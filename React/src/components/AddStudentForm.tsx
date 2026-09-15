@@ -1,200 +1,268 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Student } from "../hooks/useStudents";
+import { toast } from "sonner";
+import { GraduationCap } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/overlay";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
+import { ScrollArea } from "./ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/feedback";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "./ui/form";
+import type { Student } from "../store/studentsSlice";
+import type { Course } from "../store/coursesSlice";
+import type { StudentInput } from "../store/studentsApi";
 
-interface AddStudentFormProps {
-  onAddStudent: (
-    student: Omit<Student, "id">
-  ) => Promise<void>;
-
-  onUpdateStudent: (
-    student: Student
-  ) => Promise<void>;
-
-  editingStudent: Student | null;
-
-  clearEditing: () => void;
-}
-
-const AVATAR_OPTIONS = [
-  "https://i.pravatar.cc/300?img=1",
-  "https://i.pravatar.cc/300?img=5",
-  "https://i.pravatar.cc/300?img=12",
-  "https://i.pravatar.cc/300?img=20",
-  "https://i.pravatar.cc/300?img=32",
-];
-
+// Mirrors the backend's createStudentSchema (validation/studentSchema.ts)
+// — the photo is handled separately below, not through react-hook-form.
 const studentSchema = z.object({
-  name: z
-    .string()
-    .min(2, "Name must be at least 2 characters"),
-
-  role: z
-    .string()
-    .min(2, "Role must be at least 2 characters"),
-
-  avatar: z
-    .string()
-    .min(1, "Please select an avatar"),
+  name: z.string().trim().min(2, "Name must be at least 2 characters"),
+  age: z.number({ error: "Age is required" }).int().min(1).max(100),
+  email: z.email("Enter a valid email"),
+  phone: z.number({ error: "Phone is required" }),
+  courses: z.array(z.string()).optional(),
 });
 
 type StudentFormData = z.infer<typeof studentSchema>;
 
+interface AddStudentFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddStudent: (student: StudentInput) => Promise<void>;
+  onUpdateStudent: (id: string, student: StudentInput) => Promise<void>;
+  editingStudent: Student | null;
+  availableCourses: Course[];
+}
+
 function AddStudentForm({
+  open,
+  onOpenChange,
   onAddStudent,
   onUpdateStudent,
   editingStudent,
-  clearEditing,
+  availableCourses,
 }: AddStudentFormProps) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<StudentFormData>({
-    resolver: zodResolver(studentSchema),
+  const isEditing = Boolean(editingStudent);
 
-    defaultValues: {
-      name: "",
-      role: "",
-      avatar: AVATAR_OPTIONS[0],
-    },
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const form = useForm<StudentFormData>({
+    resolver: zodResolver(studentSchema),
+    defaultValues: { name: "", age: undefined, email: "", phone: undefined, courses: [] },
   });
 
   useEffect(() => {
-    if (editingStudent) {
-      reset({
-        name: editingStudent.name,
-        role: editingStudent.role,
-        avatar: editingStudent.avatar,
-      });
-    } else {
-      reset({
-        name: "",
-        role: "",
-        avatar: AVATAR_OPTIONS[0],
-      });
+    if (open) {
+      form.reset(
+        editingStudent
+          ? {
+              name: editingStudent.name,
+              age: editingStudent.age,
+              email: editingStudent.email,
+              phone: editingStudent.phone,
+              courses: editingStudent.courses.map((c) => c._id),
+            }
+          : { name: "", age: undefined, email: "", phone: undefined, courses: [] },
+      );
+      setPhotoFile(null);
+      setPhotoPreview(editingStudent?.avatar ?? null);
     }
-  }, [editingStudent, reset]);
+  }, [open, editingStudent, form]);
 
-  const selectedAvatar = watch("avatar");
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>): void {
+    const file = e.target.files?.[0] ?? null;
+    setPhotoFile(file);
+    setPhotoPreview(file ? URL.createObjectURL(file) : (editingStudent?.avatar ?? null));
+  }
 
-  async function onSubmit(
-    data: StudentFormData
-  ): Promise<void> {
-    if (editingStudent) {
-      await onUpdateStudent({
-        ...editingStudent,
-        ...data,
-      });
+  async function onSubmit(data: StudentFormData): Promise<void> {
+    try {
+      const input = { ...data, photo: photoFile ?? undefined };
 
-      clearEditing();
-    } else {
-      await onAddStudent(data);
-
-      reset({
-        name: "",
-        role: "",
-        avatar: AVATAR_OPTIONS[0],
-      });
+      if (editingStudent) {
+        await onUpdateStudent(editingStudent._id, input);
+        toast.success("Student updated");
+      } else {
+        await onAddStudent(input);
+        toast.success("Student added");
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : isEditing
+            ? "Failed to update student"
+            : "Failed to add student",
+      );
     }
   }
 
   return (
-    <form
-      className="add-student-form"
-      onSubmit={handleSubmit(onSubmit)}
-    >
-      <div className="form-row">
-        <div style={{ flex: 1 }}>
-          <input
-            type="text"
-            placeholder="Student Name"
-            {...register("name")}
-          />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit student" : "Add student"}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Update this student's details." : "Enter the details for the new student."}
+          </DialogDescription>
+        </DialogHeader>
 
-          {errors.name && (
-            <p className="form-error">
-              {errors.name.message}
-            </p>
-          )}
-        </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <Avatar size="lg">
+                {photoPreview && <AvatarImage src={photoPreview} alt="Photo preview" />}
+                <AvatarFallback>
+                  <GraduationCap className="size-4" />
+                </AvatarFallback>
+              </Avatar>
+              <label className="cursor-pointer text-sm text-muted-foreground underline">
+                {photoFile || editingStudent?.avatar ? "Change photo" : "Add a photo (optional)"}
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              </label>
+            </div>
 
-        <div style={{ flex: 1 }}>
-          <input
-            type="text"
-            placeholder="Role"
-            {...register("role")}
-          />
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Bikash Rai" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {errors.role && (
-            <p className="form-error">
-              {errors.role.message}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <fieldset className="avatar-picker">
-        <legend>Choose an avatar</legend>
-
-        <div className="avatar-options">
-          {AVATAR_OPTIONS.map((avatar) => (
-            <label
-              key={avatar}
-              className="avatar-option"
-            >
-              <input
-                type="radio"
-                value={avatar}
-                {...register("avatar")}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Age</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="20"
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-
-              <img
-                src={avatar}
-                alt="Avatar"
-                style={{
-                  border:
-                    selectedAvatar === avatar
-                      ? "3px solid #635bff"
-                      : "3px solid transparent",
-                }}
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="9800000000"
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </label>
-          ))}
-        </div>
+            </div>
 
-        {errors.avatar && (
-          <p className="form-error">
-            {errors.avatar.message}
-          </p>
-        )}
-      </fieldset>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="student@school.edu" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      <div className="form-buttons">
-        <button
-          type="submit"
-          className="btn--submit"
-        >
-          {editingStudent
-            ? "Update Student"
-            : "Add Student"}
-        </button>
+            <FormField
+              control={form.control}
+              name="courses"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Enrolled courses</FormLabel>
+                  <FormControl>
+                    <ScrollArea className="h-32 rounded-md border p-3">
+                      {availableCourses.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No courses yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {availableCourses.map((course) => {
+                            const checked = field.value?.includes(course._id) ?? false;
+                            return (
+                              <label key={course._id} className="flex items-center gap-2 text-sm font-normal">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(value) => {
+                                    const current = field.value ?? [];
+                                    field.onChange(
+                                      value
+                                        ? [...current, course._id]
+                                        : current.filter((id) => id !== course._id),
+                                    );
+                                  }}
+                                />
+                                {course.name} <span className="text-muted-foreground">({course.code})</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {editingStudent && (
-          <button
-            type="button"
-            className="btn--cancel"
-            onClick={clearEditing}
-          >
-            Cancel
-          </button>
-        )}
-      </div>
-    </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Saving..." : isEditing ? "Save changes" : "Add student"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

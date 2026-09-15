@@ -2,38 +2,41 @@ import { Student } from "../models/students";
 
 // GET all students
 export async function getStudents() {
-    return await Student.find();
+  return await Student.find().populate("courses", "name code");
 }
 
 // GET student by ID
 export async function getStudentByIdService(id: string) {
-    return await Student.findById(id);
+  return await Student.findById(id).populate("courses", "name code");
 }
 
 // CREATE student
 export async function createStudentService(data: any) {
-    return await Student.create(data);
+  const student = await Student.create(data);
+  return student.populate("courses", "name code");
 }
 
-// UPDATE entire student (PUT)
+// PUT
 export async function updateStudentService(id: string, data: any) {
-    return await Student.findByIdAndUpdate(
-        id,
-        data,
-        { new: true, runValidators: true }
-    );
+  return await Student.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  }).populate("courses", "name code");
 }
 
-// UPDATE partial student (PATCH)
+// PATCH
 export async function patchStudentService(id: string, data: any) {
-    return await Student.findByIdAndUpdate(
-        id,
-        data,
-        { new: true, runValidators: true }
-    );
+  return await Student.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  }).populate("courses", "name code");
 }
 
 // DELETE student
 export async function deleteStudentService(id: string) {
-    return await Student.findByIdAndDelete(id);
+  return await Student.findByIdAndDelete(id);
 }
+
+// Sets the photo path saved by the multer upload — see
+// controllers/studentPhoto.ts
+

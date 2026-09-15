@@ -16,9 +16,7 @@ function StudentProfilePage({
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const student = students.find(
-    (student) => student.id === id
-  );
+  const student = students.find((student) => student.id === id);
 
   if (!student) {
     return <h2>Student not found.</h2>;
@@ -54,13 +52,9 @@ function StudentProfilePage({
         />
 
         <div className="card__body">
-          <h2 className="card__name">
-            {currentStudent.name}
-          </h2>
+          <h2 className="card__name">{currentStudent.name}</h2>
 
-          <p className="card__role">
-            {currentStudent.role}
-          </p>
+          <p className="card__role">{currentStudent.role}</p>
         </div>
 
         <div
@@ -73,7 +67,6 @@ function StudentProfilePage({
         >
           {isAuthenticated && (
             <>
-              
               <Button
                 variant="contained"
                 component={Link}
@@ -82,20 +75,13 @@ function StudentProfilePage({
                 Edit
               </Button>
 
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleDelete}
-              >
+              <Button variant="contained" color="error" onClick={handleDelete}>
                 Delete
               </Button>
             </>
           )}
 
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/")}
-          >
+          <Button variant="outlined" onClick={() => navigate("/")}>
             Back
           </Button>
         </div>

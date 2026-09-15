@@ -1,62 +1,22 @@
-import { NavLink, Outlet } from "react-router-dom";
-import Header from "../components/Header";
+import { Outlet } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
+import { Separator } from "../components/ui/feedback";
 
-interface LayoutProps {
-  isAuthenticated: boolean;
-  onLogout: () => void;
-}
-
-function navLinkClass({
-  isActive,
-}: {
-  isActive: boolean;
-}): string {
-  return isActive
-    ? "nav-link nav-link--active"
-    : "nav-link";
-}
-
-function Layout({
-  isAuthenticated,
-  onLogout,
-}: LayoutProps) {
+function Layout() {
   return (
-    <div className="app">
-      <Header />
-
-      <nav className="app-nav">
-        <div className="nav-left">
-          <NavLink
-            to="/"
-            end
-            className={navLinkClass}
-          >
-            Students
-          </NavLink>
+    <SidebarProvider>
+      <Sidebar />
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+          <Outlet />
         </div>
-
-        <div className="nav-right">
-          {isAuthenticated ? (
-            <button
-              type="button"
-              className="nav-link nav-logout"
-              onClick={onLogout}
-            >
-              Log out
-            </button>
-          ) : (
-            <NavLink
-              to="/login"
-              className={navLinkClass}
-            >
-              Log in
-            </NavLink>
-          )}
-        </div>
-      </nav>
-
-      <Outlet />
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

@@ -1,10 +1,19 @@
-import {createSlice, type PayloadAction} from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+
+export interface StudentCourse {
+  _id: string;
+  name: string;
+  code: string;
+}
 
 export interface Student {
-  id: string;
+  _id: string;
   name: string;
-  role: string;
-  avatar: string;
+  age: number;
+  email: string;
+  phone: number;
+  courses: StudentCourse[];
+  avatar?: string;
 }
 
 interface StudentsState {
@@ -25,35 +34,23 @@ const studentsSlice = createSlice({
   initialState,
 
   reducers: {
-    setStudents: (
-      state,
-      action: PayloadAction<Student[]>
-    ) => {
+    setStudents: (state, action: PayloadAction<Student[]>) => {
       state.students = action.payload;
     },
 
-    addStudent: (
-      state,
-      action: PayloadAction<Student>
-    ) => {
+    addStudent: (state, action: PayloadAction<Student>) => {
       state.students.push(action.payload);
     },
 
-    deleteStudent: (
-      state,
-      action: PayloadAction<string>
-    ) => {
+    deleteStudent: (state, action: PayloadAction<string>) => {
       state.students = state.students.filter(
-        (student) => student.id !== action.payload
+        (student) => student._id !== action.payload,
       );
     },
 
-    updateStudent: (
-      state,
-      action: PayloadAction<Student>
-    ) => {
+    updateStudent: (state, action: PayloadAction<Student>) => {
       const index = state.students.findIndex(
-        (student) => student.id === action.payload.id
+        (student) => student._id === action.payload._id,
       );
 
       if (index !== -1) {
@@ -61,17 +58,11 @@ const studentsSlice = createSlice({
       }
     },
 
-    setLoading: (
-      state,
-      action: PayloadAction<boolean>
-    ) => {
+    setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
     },
 
-    setError: (
-      state,
-      action: PayloadAction<string>
-    ) => {
+    setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
     },
   },

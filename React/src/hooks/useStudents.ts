@@ -1,125 +1,76 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
-  addStudent as addStudentAction,
-  deleteStudent as deleteStudentAction,
-  setError,
-  setLoading,
   setStudents,
+  addStudent as addStudentAction,
   updateStudent as updateStudentAction,
+  deleteStudent as deleteStudentAction,
+  setLoading,
+  setError,
 } from "../store/studentsSlice";
-import { useAppDispatch } from "../store/hooks";
+import {
+  fetchStudents,
+  createStudent,
+  editStudent,
+  removeStudent,
+  type StudentInput,
+} from "../store/studentsApi";
 
-export interface Student {
-  id: string;
-  name: string;
-  role: string;
-  avatar: string;
-}
-
-const URL = `${import.meta.env.VITE_API_URL}/students`;
-
+// Loads students on mount and exposes CRUD actions that call the backend
+// and keep the Redux store in sync.
 function useStudents() {
   const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      dispatch(setLoading(true));
+  const students = useAppSelector((state) => state.students.students);
+  const loading = useAppSelector((state) => state.students.loading);
+  const error = useAppSelector((state) => state.students.error);
 
-      try {
-        const response = await fetch(URL);
+  const loadStudents = useCallback(async () => {
+    dispatch(setLoading(true));
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch students");
-        }
-
-        const data: Student[] = await response.json();
-
-        dispatch(setStudents(data));
-      } catch (err) {
-        if (err instanceof Error) {
-          dispatch(setError(err.message));
-        }
-      } finally {
-        dispatch(setLoading(false));
+    try {
+      const data = await fetchStudents();
+      dispatch(setStudents(data));
+      dispatch(setError(""));
+    } catch (err) {
+      if (err instanceof Error) {
+        dispatch(setError(err.message));
       }
-    };
-
-    fetchStudents();
+    } finally {
+      dispatch(setLoading(false));
+    }
   }, [dispatch]);
 
-  const addStudent = async (
-    student: Omit<Student, "id">
-  ) => {
-    try {
-      const response = await fetch(URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(student),
-      });
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
-      if (!response.ok) {
-        throw new Error("Failed to add student");
-      }
+  async function addStudent(student: StudentInput): Promise<void> {
+    const newStudent = await createStudent(student);
+    dispatch(addStudentAction(newStudent));
+  }
 
-      const newStudent: Student =
-        await response.json();
+  async function updateStudent(
+    id: string,
+    student: StudentInput,
+  ): Promise<void> {
+    const updatedStudent = await editStudent(id, student);
+    dispatch(updateStudentAction(updatedStudent));
+  }
 
-      dispatch(addStudentAction(newStudent));
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const deleteStudent = async (id: string) => {
-    try {
-      const response = await fetch(`${URL}/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete student");
-      }
-
-      dispatch(deleteStudentAction(id));
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const updateStudent = async (
-    updatedStudent: Student
-  ) => {
-    try {
-      const response = await fetch(
-        `${URL}/${updatedStudent.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedStudent),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update student");
-      }
-
-      const student: Student =
-        await response.json();
-
-      dispatch(updateStudentAction(student));
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  async function deleteStudent(id: string): Promise<void> {
+    await removeStudent(id);
+    dispatch(deleteStudentAction(id));
+  }
 
   return {
+    students,
+    loading,
+    error,
     addStudent,
-    deleteStudent,
     updateStudent,
+    deleteStudent,
+    refetch: loadStudents,
   };
 }
 

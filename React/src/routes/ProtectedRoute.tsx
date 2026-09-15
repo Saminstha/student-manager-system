@@ -1,14 +1,14 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import useAuth from "../hooks/useAuth";
 
-interface ProtectedRouteProps {
-  isAuthenticated: boolean;
-}
+function ProtectedRoute() {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
 
-function ProtectedRoute({
-  isAuthenticated,
-}: ProtectedRouteProps) {
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Remember where they were headed so LoginPage can send them back
+    // after a successful login.
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return <Outlet />;

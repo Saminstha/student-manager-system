@@ -22,6 +22,25 @@ export function errorHandler(
         return;
     }
 
+    if (err instanceof Error && err.name === "MulterError") {
+        res.status(400).json({
+            error: err.message,
+        });
+
+        return;
+    }
+
+    if (
+        err instanceof Error &&
+        (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError")
+    ) {
+        res.status(401).json({
+            error: "Invalid or expired token",
+        });
+
+        return;
+    }
+
     const status =
         err instanceof HttpError
             ? err.status
